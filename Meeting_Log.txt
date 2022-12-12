@@ -1,0 +1,232 @@
+24 Dec 2021
+    下一步实现一下latent space的态分布绘制
+    然后AE的结构图要能够画出来
+
+    给定数据维数变化的话我用的model是不是就不一样？
+
+    每个dataset采出来的bias的范围不一样
+
+    2223 OD +- 60mV
+         UD +- 60mV连pseaudogap都盖不住
+
+    超导的谱（2223 2212的OP-OD区间）：取两个peaks对应极大值点，然后做normalization
+    我们能期待AE给出来什么呢？如果这样的话？
+        gap肯定就是大小一样的？
+
+    如果是在1个grid里头做，可以给出来什么东西的map？
+        background 的 tilt, 可能对应某种理论上的原子的东西？
+            （但是并不非得要神经网络才可以做）
+    AE 能给出来什么？神经网络可以一次性的给出来很多feature？
+
+        对于不同的system，doping，这个先验的normalization怎么来做呢
+            更进一步，是利用某种data cleaning的方法，把多个grid放在一个model里面？
+            AE只是学到了不同grid之间的差异？
+
+            有没有可能先让一个AE把这些差异学掉
+                把grid间的差异准确地压缩到一个维度上，然后我们关心剩下的维度？
+                    或者是大AE减去一个小AE这样的？
+
+                model结构里面可以把
+                    1 hot vector
+                    num_grid维的向量 + 剩下n维度的信息交给variational encoder
+
+
+
+                1个grid切成2半以后，喂进去，那么应该grid间区别的part应该基本都不work，然后common的
+
+            黑挤白？？？（黑异，白同，存异，求同）
+
+
+        另一个思路是直接给进去 grid_label。
+
+    variational AE?
+
+1 grid 10 model, 真刀真枪先做10个model试试看表现情况？看看这个框架合不合理？
+    找找感觉
+
+GRID间构建连续演化的叙事？grid本身是足够连续演化的
+
+
+# TransConv转置卷积
+我们可以将转置卷积看做是有padding的普通卷积。也就是说，所谓的转置卷积，等价于普通卷积，无非是padding较大时，可以达到上采样的效果。
+
+
+
+2022.2.11
+调试笔记：还是在折腾Conv1d的那个model，给我整不会了
+矛盾在于，原先FC的时候可以直接把一个patch（256根）扔进去，但是现在不可以了，要先reshape一下，应该是Conv1d这个函数的特性
+处理step1: 在model_1的Encoder前面和Decoder后面加上reshape语句。
+发现问题：这样analyse的时候会出事，维数对不上
+处理step2: 在train.py里面的train函数和test函数都加上这些东西
+待检验的问题： 不知道这样analyse work不work
+            不知道和model_0兼不兼容
+
+其实focus一下：矛盾在于train这边输入的是[256, 101], analyse那边是[101]一条
+然后那个model_1里面Conv1d卷积核又要求是[8, 1, 5]
+model_0倒是都可以兼容
+
+看来问题主要在于model_1这边，那就是101就应该对应的变成[1, 1, 101]
+同时[101]最好变成[1, 101]
+
+完美！ work了
+
+艹艹艹艹，construct函数不work，就很悲伤
+
+不要用眼睛看debug，看每一个步骤的size变化
+
+！！！！待改进：popen读不出实时信息            ----已经改进
+
+
+
+可以先尝试2201的不同grid
+给的变化大一些
+
+machine learning spectroscopy
+
+autoencoder作map
+
+2022.3.29
+想怎么样呢？可以先4维+2label喂进去，看一下有没办法提取出来一样的信息和趋势
+
+试图适配不同grid，但是现在train.py不work了，看起来是early stopping那边第一句一定会跳出来
+    ！是因为没有替存model的函数建好文件夹，他本身是不可以新建文件夹的！！！
+    ！！！待改进，检测是否已有文件夹并写新建语句
+
+新问题：5K的grid做出来似乎没有那么漂亮，就是很多特征都没掉了，换个model试试看
+
+！！！这个grid的线拉的都不对！怀疑是mean_curve里面写的有一些问题，看一看能不能写一个单独的py检查一下画线的函数。
+
+4.8
+先注意一下之前做的是2212的东西。
+现在光速来调试一下
+
+果然是有问题了！！！终于发现了！！！
+offset之前是直接去找全域最小，是不对的，应该去找0附近的极小
+来不及改代码了，就写成一个较小范围（like ±0.01以内）的最小
+
+！！！注意datatransform结尾用的savez，是不可以覆盖的！所以有问题要删档重来
+    ？后来发现那个bug是因为没改datatransform的名字，回头看看对不对
+
+Slider控件卡死非常影响体验！！！注意！
+
+# 4.15补充：我觉得大概率是clear函数的问题，因为不clear就畅行无阻不卡顿。
+真的不想搞，死都搞不出来
+
+
+# 4.15
+1.map
+2.grid间 温度/doping
+3.多做一些model，尽可能看到model对于结果的影响，或者没有影响
+3.1 上Vari AE
+4.Analyse, waterfall plot
+5.数据的预处理
+6.align晶格
+
+# 4.22
+先对曲线做平滑，去掉噪声的影响
+    图更好看
+    信息更纯粹
+
+加噪声，可能可以提高去噪表现
+
+* 训练过程加噪声，增加网络的robustness
+
+* 平均谱有没有可能连续化地处理
+
+* 把mapping写了
+
+# 5.8
+OP32K有问题，interpolate报错
+ODNSC也有问题，定不出offset
+
+在主机上找到了目前最好的slider写法，反正似乎不可以用ax.clear()
+
+save部分暂时写了，但是要read非常非常之久
+
+后续改进：可以直接由grid-set给定一个文件夹，然后不给grid_names这些数组，自己读取里面所有的npz
+
+x gap y 参数空间
+
+Z map
+
+1 炼丹压loss
+2 直接上VAE
+3 Z map gap map先画出来
+4 走一步看一步
+
+文献关过一过
+
+
+# 5.22
+看一下Zmap怎么写，估计得看nanonispy的github文件
+
+OP32K看了一下grid源文件有两个x，采了两遍，那么也先不管。先搞定variational
+
+https://towardsdatascience.com/understanding-variational-autoencoders-vaes-f70510919f73
+浅浅学一下VAE，也有提到和PCA的区别
+PCA: It can be shown that the unitary eigenvectors corresponding to the n_e greatest eigenvalues (in norm) of the covariance features matrix are orthogonal (or can be chosen to be so) and define the best subspace of dimension n_e to project data on with minimal error of approximation. Thus, these n_e eigenvectors can be chosen as our new features and, so, the problem of dimension reduction can then be expressed as an eigenvalue/eigenvector problem. Moreover, it can also be shown that, in such case, the decoder matrix is the transposed of the encoder matrix.
+
+explicitly regularise it
+
+instead of encoding an input as a single point, we encode it as a distribution over the latent space
+
+In variational autoencoders, the loss function is composed of
+a reconstruction term (that makes the encoding-decoding scheme efficient) and
+a regularisation term (that makes the latent space regular).
+
+最好加一个副标题记一下waterfall的offset
+
+注意要学的是Disentangled variational AE
+
+Varying β changes the degree of applied learning pressure during
+training, thus encouraging different learnt representations. When β = 0, we obtain the standard
+maximum likelihood learning. When β = 1, we recover the Bayes solution. We postulate that in
+order to learn disentangled representations of the continuous data generative factors it is important to
+tune β to approximate the level of learning pressure present in the ventral visual stream
+
+来吧VAE
+
+
+有空看一眼version control
+VAE得跑出来
+
+0609
+试着改一改预处理……吧
+
+0707
+很久没有仔细记会议log
+想一下目标：
+1改model，更复杂描述力更强一些
+    告辞，unmaxpool不会写，因为要传indices不知道放在哪里
+    但是先try几个别的model
+2加入OP，需要处理3ds
+    2.1把3+1改一下，用Tc标识
+
+3再深入分析一下，把compare map的工具写得更好一些
+4把前面的数据处理环节展示一下
+5std排序也得改
+
+0712……
+要不看一下git怎么用？
+整理一下文献，首先解决横轴resize的问题，看一下UD gap的演变
+至少前面NSC的可以尝试一下，dataTransform需要改写，加入新的功能
+预处理？？？三次拟合？？？
+
+grid管理的结构
+
+有空把画完每张图清缓存给写了
+
+0724
+一天天这样的
+不累吗
+
+看一下微信上面的记录吧
+
+0728
+dataTransform.py里interp1d改splrep
+
+0729
+完全放弃给grid label，改用(pseudo)gap size label谱线？
+0820
+→后续的做法是完全放弃了给label让他们直接生成这个parameter
+
