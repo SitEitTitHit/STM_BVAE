@@ -8,7 +8,7 @@ beta = [[1e-3, 1e-3, 1e-3, 1e-3]]
 patience = 5
 dpk = 'interp_GF05'
 
-flag_train = 0
+flag_train = 1
 flag_plot = 1
 
 
