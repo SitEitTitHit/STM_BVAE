@@ -3,22 +3,21 @@ from torch.utils.data import Dataset
 
 import numpy as np
 import pandas as pd
-
 import random
-
 import math  # math.cell used
 
 import importlib
 import argparse
 import os
 import re
-import createCmp
-import heapq
+
+import heapq  # sorting
 from scipy.signal import correlate2d
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons, CheckButtons
 from matplotlib import cm, cbook
+import createCmp
 
 
 def str2bool(v):
