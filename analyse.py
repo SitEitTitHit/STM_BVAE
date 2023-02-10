@@ -1,12 +1,13 @@
+import torch
+from torch.utils.data import Dataset
+
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons, CheckButtons
-from matplotlib import cm, cbook
+
 import random
-import torch
+
 import math  # math.cell used
-from torch.utils.data import Dataset
+
 import importlib
 import argparse
 import os
@@ -14,6 +15,10 @@ import re
 import createCmp
 import heapq
 from scipy.signal import correlate2d
+
+import matplotlib.pyplot as plt
+from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons, CheckButtons
+from matplotlib import cm, cbook
 
 
 def str2bool(v):
@@ -25,14 +30,15 @@ def str2bool(v):
         raise argparse.ArgumentTypeError('Unsupported value encountered.')
 
 
-model_index_default = 7
-save_index_default = 5
+model_index_default = 0
+save_index_default = 0
+beta_default = 1e-3
+grid_set = '9_doping'
+grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
 dpk_default = 'interp_GF05'
-grid_set = '8d'
-grid_set_path = 'grids/08_11_13_16_18_19_21_22_23/'
 # grid_set = 'UD150'
 # grid_set_path = 'grids/04_08_11_13/'
-no_label_model_list = [5, 6, 7]
+no_label_model_list = [0]
 
 # grid_set = '00_10_22'
 # grid_set_path = 'grids/00_10_22/'
@@ -42,8 +48,8 @@ no_label_model_list = [5, 6, 7]
 
 flag_all = 0
 flag_LS_retrieve = 0
-flag_LS_filter = 0
-flag_LS_profile = 1
+flag_LS_filter = 1
+flag_LS_profile = 0
 
 flag_LS_distribution = 0
 flag_plot_ae_outputs = 0
@@ -358,8 +364,8 @@ def LSDistribution(n_rows=2, dim_clipped=8):
 # real_space_size = (480, 480, 360, 350, 440, 320, 300, 350)  # in Angstrom
 # real_space_size = (480, 380, 400, 350, 440, 450, 300, 350)  # in Angstrom
 # 不如直接给Qx的位置
-Qx_pos = [215, 209.5, 201.5, 205.5, 227.5, 217.5, 186, 193.5]
-original_grid_size = [256, 256, 256, 256, 281, 256, 256, 256]
+Qx_pos = [200, 215, 209.5, 201.5, 205.5, 227.5, 217.5, 186, 193.5]  # the 0th for 0.04 is not accurate
+original_grid_size = [200, 256, 256, 256, 256, 281, 256, 256, 256]
 Qx = [Qx_pos[i]-original_grid_size[i]/2 for i in range(data.grid_num)]
 zoom_in_factor = 1.3
 FFT_lim = [[0.5*grid_size[i]*(1-zoom_in_factor*2*Qx[i]/original_grid_size[0])-0.5,
@@ -632,8 +638,9 @@ def MultipleMap(g, p):
     plt.show()
 
 
-def data_index_retrieve(paras, batch_size=2**16, rtv_num: int=1):
+def data_index_retrieve(paras, process_batch=2**16, rtv_num: int=1):
     # retrieve the index of original data whose paras are most similar to the paras given
+    # 似乎这句话没什么用
     with torch.no_grad():
         # error = []
         # paras_tile = (torch.Tensor(np.tile(paras, (batch_size, 1)))).to(device)
@@ -653,15 +660,15 @@ def data_index_retrieve(paras, batch_size=2**16, rtv_num: int=1):
         # batch = (torch.Tensor(batch)).to(device)
         # error.append(torch.mean(torch.square(torch.add(batch, paras_tile, alpha=-1)), 1).cpu())
         error = []
-        paras_tile = (torch.Tensor(np.tile(paras, (batch_size, 1)))).to(device)
+        paras_tile = (torch.Tensor(np.tile(paras, (process_batch, 1)))).to(device)
         # 把paras也堆成对应的形状
-        for i in range(math.ceil(len(data)/batch_size)-1):
-            batch = (torch.from_numpy(np.array(enc_mu.iloc[i*batch_size:(i+1)*batch_size]))).to(device)
+        for i in range(math.ceil(len(data)/process_batch)-1):
+            batch = (torch.from_numpy(np.array(enc_mu.iloc[i*process_batch:(i+1)*process_batch]))).to(device)
             error.append(torch.mean(torch.square(torch.add(batch, paras_tile, alpha=-1)), 1).cpu())
 
         i = i + 1
-        paras_tile = (torch.Tensor(np.tile(paras, (len(data)-i*batch_size, 1)))).to(device)
-        batch = (torch.from_numpy(np.array(enc_mu.iloc[i*batch_size:]))).to(device)
+        paras_tile = (torch.Tensor(np.tile(paras, (len(data)-i*process_batch, 1)))).to(device)
+        batch = (torch.from_numpy(np.array(enc_mu.iloc[i*process_batch:]))).to(device)
         error.append(torch.mean(torch.square(torch.add(batch, paras_tile, alpha=-1)), 1).cpu())
 
     error = np.array(torch.cat(error))
@@ -775,7 +782,7 @@ def LSFilter():
     def plot_refresh():
         init()
 
-        a = np.array(np.load(grid_set_path + grid_legends[grid_index] + '.interp_twisted.npz')['dIdV']
+        a = np.array(np.load(grid_set_path + grid_legends[grid_index] + '.' + data_process_keyword + '.npz')['dIdV']
                      )[:, bias_index].reshape((grid_size[grid_index], -1))
         vmin, vmax = give_mapping_lims(a, 'r')
         axs[0,0].imshow(a, vmin=vmin, vmax=vmax)

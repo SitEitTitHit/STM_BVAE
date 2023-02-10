@@ -2,9 +2,9 @@ import os
 import subprocess
 
 # Use list instead of tuple
-model_index = [7]
-save_index = [[0, 1, 2, 3]]
-beta = [[1e-3, 1e-3, 1e-3, 1e-3]]
+model_index = [0]
+save_index = [[0]]
+beta = [[1e-3]]
 patience = 5
 dpk = 'interp_GF05'
 

@@ -11,15 +11,13 @@ import os
 import shutil  # to rename the file
 
 
-model_index_default = 7
-save_index_default = 0
+model_index_default = 0
+save_index_default = 3
 beta_default = 1e-3
-grid_set = 'UD150'
-grid_set_path = 'grids/04_08_11_13/'
-dpk_default = 'interp_twisted'
+grid_set = '9_doping'
+grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
+dpk_default = 'interp_GF05'
 
-# grid_set = '00_10_22'
-# grid_set_path = 'grids/00_10_22/'
 
 # argument parsers
 parser = argparse.ArgumentParser(description='Welcome!')
@@ -237,18 +235,41 @@ def SaveEncodedSamples():
         enc_mu['label'] = label
         enc_mus.append(enc_mu)
 
-        # logvar = logvar.flatten().cpu().numpy()
-        # enc_logvar = {f'{i}': paras for i, paras in enumerate(logvar)}  # 用字典储存, 'i'->paras[i]
-        # enc_logvar['label'] = label
-        # enc_logvars.append(enc_logvar)
-
     enc_mus = pd.DataFrame(enc_mus)
     enc_mus.to_csv(path_or_buf=save_path+'_encoded_mu.csv')
-
-    # enc_logvars = pd.DataFrame(enc_logvars)
-    # enc_logvars.to_csv(path_or_buf=save_path+'_encoded_logvar.csv')
-    # print('encoded means & log covariances saved as csv')
     print('encoded means saved as csv')
+
+
+def SaveEncodedSamples2(process_batch=2**16):
+    enc_mus = []  # list of dictionary
+    with torch.no_grad():
+        for sample in full_dataset:
+            dIdV = torch.reshape(torch.Tensor(sample[0]), (1, -1)).to(device)
+            label = sample[1]
+            # encode data
+            VAE.eval()
+            mu, logvar = VAE._encode(dIdV)
+            # Append to list
+            mu = mu.flatten().cpu().numpy()
+            enc_mu = {f'{i}': paras for i, paras in enumerate(mu)}  # 用字典储存, 'i'->paras[i]
+            enc_mu['label'] = label
+            enc_mus.append(enc_mu)
+
+        enc_mus = pd.DataFrame(enc_mus)
+        enc_mus.to_csv(path_or_buf=save_path+'_encoded_mu.csv')
+        print('encoded means saved as csv')
+
+        error = []
+        paras_tile = (torch.Tensor(np.tile(paras, (batch_size, 1)))).to(device)
+        # 把paras也堆成对应的形状
+        for i in range(math.ceil(len(data)/batch_size)-1):
+            batch = (torch.from_numpy(np.array(enc_mu.iloc[i*batch_size:(i+1)*batch_size]))).to(device)
+            error.append(torch.mean(torch.square(torch.add(batch, paras_tile, alpha=-1)), 1).cpu())
+
+        i = i+1
+        paras_tile = (torch.Tensor(np.tile(paras, (len(data)-i*batch_size, 1)))).to(device)
+        batch = (torch.from_numpy(np.array(enc_mu.iloc[i*batch_size:]))).to(device)
+        error.append(torch.mean(torch.square(torch.add(batch, paras_tile, alpha=-1)), 1).cpu())
 
 
 epoch = 0
