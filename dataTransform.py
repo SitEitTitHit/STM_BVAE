@@ -108,7 +108,9 @@ class GridProcess:
             norm = np.mean(np.concatenate((self.mean_curve[:5], self.mean_curve[-5:])))
             dIdV_itp = dIdV_itp.astype(np.float32)
             if self.load_modifier == 'GF0.5':
-                np.savez(self.grid_path[:-4] + '.interp_GF05.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
+                # np.savez(self.grid_path[:-4] + '.interp_GF05.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
+                #          mean_curve=mean_curve_interp / norm, std=norm, offset=self.offset)
+                np.savez(self.grid_path[:-4] + '.interp_GF05_1.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
                          mean_curve=mean_curve_interp / norm, std=norm, offset=self.offset)
 
         if map_gap:

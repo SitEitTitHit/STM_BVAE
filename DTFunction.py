@@ -1,9 +1,23 @@
 import numpy as np
-from scipy import optimize, interpolate, misc
+from scipy import optimize, interpolate, misc, ndimage
 import matplotlib.pyplot as plt
 
 grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
 bias_interp = np.arange(-100e-3, 100e-3 + 1e-3, 1e-3)
+
+
+# 这段整个改了一下fit的横轴
+a0, a2 = 1e-3, 2e-2
+def f_ext(x, a0, a2): return a0 * x ** 3 + a2 * x
+b0 = np.real(np.roots([a0, 0, a2, -100e-3])[2])
+a = np.linspace(-b0, b0, 201, endpoint=True)
+bias_ie = f_ext(a, a0, a2)
+# plt.plot(f_ext(a, a0, a2), a)
+# plt.scatter(f_ext(a, a0, a2), np.zeros(201)-b0, s=3)
+# plt.show()
+# print(bias_ie[1]-bias_ie[0], bias_ie[101]-bias_ie[100])
+bias_interp = bias_ie
+
 
 # mrange_change is for smoothing out the measure range change
 mrange_change = {'08': [25, 40], '11': [30, 50], '13': [30, 40]}

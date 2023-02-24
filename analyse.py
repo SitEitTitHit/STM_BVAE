@@ -1,16 +1,16 @@
+# 文件管理
+import importlib
+import argparse
+import os
+import re  # string split
+
 import torch
 from torch.utils.data import Dataset
 
 import numpy as np
 import pandas as pd
-import random
 import math  # math.cell used
-
-import importlib
-import argparse
-import os
-import re
-
+import random
 import heapq  # sorting
 from scipy.signal import correlate2d
 
@@ -35,28 +35,20 @@ beta_default = 1e-3
 grid_set = '9_doping'
 grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
 dpk_default = 'interp_GF05'
-# grid_set = 'UD150'
-# grid_set_path = 'grids/04_08_11_13/'
 no_label_model_list = [0]
-
-# grid_set = '00_10_22'
-# grid_set_path = 'grids/00_10_22/'
-
-# grid_set = '15_24_28_32'
-# grid_set_path = 'grids/15_24_28_32/'
 
 flag_all = 0
 flag_LS_retrieve = 0
-flag_LS_filter = 1
+flag_LS_filter = 0
 flag_LS_profile = 0
 
-flag_LS_distribution = 0
-flag_plot_ae_outputs = 0
-flag_LS_correlation = 0
-flag_LS_waterfall = 0
-flag_LS_mapping = 0
+flag_LS_distribution = 1
+flag_plot_ae_outputs = 1
+flag_LS_correlation = 1
+flag_LS_waterfall = 1
+flag_LS_mapping = 1
 flag_map_AC = 0
-flag_LS_1sMse = 0
+flag_LS_1sMse = 1
 
 # argument parsers
 parser = argparse.ArgumentParser(description='Welcome!')
@@ -76,14 +68,6 @@ for i in range(len(Flist)):
     if Flist_split[i][1] == data_process_keyword:
         grid_names.append(Flist[i])
         grid_legends.append(Flist_split[i][0])
-
-# grid_set = '2_doping'
-# grid_set_path = 'grids/OD2201_4_doping/'
-# log_file = 'ModelTrainingLog.txt'
-#
-# 08
-# grid_names = ['OD15K.interp_sub.npz', 'OD24K.interp_sub.npz']
-# grid_legends = ['OD15K', 'OD24K']
 
 
 mdl = importlib.import_module('models.VAE_model_' + str(model_index))
@@ -637,6 +621,7 @@ def MultipleMap(g, p):
     plt.show()
 
 
+# 可以考虑在这里加上一段直接比较谱线MSE的
 def data_index_retrieve(paras, process_batch=2**16, rtv_num: int=1):
     # retrieve the index of original data whose paras are most similar to the paras given
     # 似乎这句话没什么用
@@ -919,11 +904,13 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
             # index = data_index_retrieve(paras)
             # curve_raw = data[index][0]+(i/wtf_count*wtf_offset)*0.1
             # parases_rtv.append(enc_mu.iloc[index])
-            # 上面是之前一条线的版本，现在改成五条线一下
+
+            # 上面是之前一条线的版本，现在改成五/十条线一下
             indices = data_index_retrieve(paras, rtv_num=5)
             curve_raw = [data[index][0] for index in indices]
             curve_raw = np.mean(curve_raw, axis=0)
             curve_raw = curve_raw+(i/wtf_count*wtf_offset)*0.1
+
             paras_rtv = [enc_mu.iloc[index] for index in indices]
             paras_rtv = np.mean(paras_rtv, axis=0)
             parases_rtv.append(paras_rtv)
@@ -1068,45 +1055,3 @@ if flag_LS_retrieve: LSRetrieve()
 if flag_LS_filter: LSFilter()
 
 if flag_LS_profile: LSProfile()
-
-
-# MultipleMap(3, 2)
-# MultipleMap(3, 3)
-# g3 p0 bias-15 (-2e-11, 0)
-# g2 p0 bias-15 (-7e-12, 0)
-# g1 p0 no need to clip
-
-
-# def LSReconstruction():
-#
-#     paras = np.zeros(dim)
-#     fig, ax = plt.subplots()
-#     curve = decode(paras)
-#     line, = ax.plot(data.bias, curve)
-#     ax.set_xlabel('Bias(V)')
-#     ax.set_ylabel('y(a.u.)')
-#     ax.xaxis.set_label_position('top')
-#     ax.xaxis.set_ticks_position('top')
-#
-#     # Adjust the subplots region to leave some space for the sliders and buttons
-#     fig.subplots_adjust(left=0.15, bottom=0.35)
-#
-#     axis = []
-#     slider = []
-#     for i in range(dim):
-#         # axis vessels: label, valmin, valmin, valinit, etc.
-#         axis.append(plt.axes([0.25, 0.30 - i * 0.03, 0.5, 0.03], label='l' + str(i)))
-#         # plt.axes：Add an axes to the current figure and make it the current axes.
-#         slider.append(Slider(axis[i], 'para' + str(i),
-#                              -3*stds_dim[std_index[i]], 3*stds_dim[std_index[i]], 0, valfmt='% .2f'))
-#
-#     def sliders_update(val):
-#         for i in range(dim):
-#             paras[std_index[i]] = slider[i].val
-#         curve = decode(paras)
-#         line.set_ydata(curve)
-#         plt.draw()
-#
-#     for i in range(dim):
-#         slider[i].on_changed(sliders_update)
-
