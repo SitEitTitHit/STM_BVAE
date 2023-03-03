@@ -4963,3 +4963,43 @@ GENERALIZATION: yes
     Early stopped with best test loss 0.009541 at epoch 58.
     Losses logged and models saved.
 --------------------------------
+
+--------------------------------
+    Grid set: 9_doping
+    Grid name: ['04.interp_GF05_1.npz', '08.interp_GF05_1.npz', '11.interp_GF05_1.npz', '13.interp_GF05_1.npz', '16.interp_GF05_1.npz', '18.interp_GF05_1.npz', '19.interp_GF05_1.npz', '22.interp_GF05_1.npz', '23.interp_GF05_1.npz'],
+    VAE_model_0_save_2, Fri Feb 24 18:18:08 2023,
+    Train time: 285.83s,
+    Train device: cuda
+    encoded dimension = 10,
+    VAE parameter numbers = 7545211,
+    Input dimension = 94815921,
+    patience = 5,
+    beta for beta-VAE = 0.001
+    batch size = 256,
+    learning rate = 5e-05,
+    noise factor = 0.2
+    adam weight decay = 1e-06.
+    20 epochs trained.
+    Early stopped with best test loss 0.010161 at epoch 15.
+    Losses logged and models saved.
+--------------------------------
+
+--------------------------------
+    Grid set: 9_doping
+    Grid name: ['04.interp_GF05_1.npz', '08.interp_GF05_1.npz', '11.interp_GF05_1.npz', '13.interp_GF05_1.npz', '16.interp_GF05_1.npz', '18.interp_GF05_1.npz', '19.interp_GF05_1.npz', '22.interp_GF05_1.npz', '23.interp_GF05_1.npz'],
+    VAE_model_0_save_3, Fri Feb 24 18:46:29 2023,
+    Train time: 559.85s,
+    Train device: cuda
+    encoded dimension = 10,
+    VAE parameter numbers = 7545211,
+    Input dimension = 94815921,
+    patience = 5,
+    beta for beta-VAE = 0.001
+    batch size = 256,
+    learning rate = 5e-05,
+    noise factor = 0.2
+    adam weight decay = 1e-06.
+    40 epochs trained.
+    Early stopped with best test loss 0.009941 at epoch 35.
+    Losses logged and models saved.
+--------------------------------

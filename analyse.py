@@ -30,25 +30,25 @@ def str2bool(v):
 
 
 model_index_default = 0
-save_index_default = 0
+save_index_default = 2
 beta_default = 1e-3
 grid_set = '9_doping'
 grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
-dpk_default = 'interp_GF05'
+dpk_default = 'interp_GF05_1'
 no_label_model_list = [0]
 
 flag_all = 0
-flag_LS_retrieve = 0
+flag_LS_retrieve = 1
 flag_LS_filter = 0
 flag_LS_profile = 0
 
-flag_LS_distribution = 1
-flag_plot_ae_outputs = 1
-flag_LS_correlation = 1
-flag_LS_waterfall = 1
-flag_LS_mapping = 1
+flag_LS_distribution = 0
+flag_plot_ae_outputs = 0
+flag_LS_correlation = 0
+flag_LS_waterfall = 0
+flag_LS_mapping = 0
 flag_map_AC = 0
-flag_LS_1sMse = 1
+flag_LS_1sMse = 0
 
 # argument parsers
 parser = argparse.ArgumentParser(description='Welcome!')

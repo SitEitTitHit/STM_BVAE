@@ -3,7 +3,7 @@ import subprocess
 
 # Use list instead of tuple
 model_index = [0]
-save_index = [[2]]
+save_index = [[3]]
 beta = [[1e-3]]
 patience = 5
 dpk = 'interp_GF05_1'
@@ -37,4 +37,4 @@ for i in range(len(model_index)):
         if flag_train:
             exe_cmd(f"python train.py -m {model_index[i]} -s {save_index[i][j]} -p {patience} -b {beta[i][j]} -k {dpk}")
         if flag_plot:
-            exe_cmd(f"python analyse_copy.py -m {model_index[i]} -s {save_index[i][j]} -k {dpk}")
+            exe_cmd(f"python analyse.py -m {model_index[i]} -s {save_index[i][j]} -k {dpk}")
