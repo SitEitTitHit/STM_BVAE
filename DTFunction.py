@@ -19,10 +19,6 @@ bias_ie = f_ext(a, a0, a2)
 bias_interp = bias_ie
 
 
-# mrange_change is for smoothing out the measure range change
-mrange_change = {'08': [25, 40], '11': [30, 50], '13': [30, 40]}
-
-
 # accept the path and open a .curves file (from R-STM)
 # return curve: curve[0] = Xs, curve[1] = Ys
 def open_curve(path):
@@ -77,12 +73,34 @@ def ng_scd_deriv(f):
     return d2f
 
 
+# 处理掉多余的点
+def detele_extra_points(name, grid_dict, bias, y, length):
+    if name == '16' or name == 'OP32K':  # 就因为OP32K的最后多了几个点
+        y = grid_dict['LI Demod 1 X (A)'].swapaxes(0, 2)[:-5]
+        y = y.swapaxes(0, 2)
+        length = y.shape
+        bias = grid_dict['Bias (V)'][0, 0][:-5]
+        y = y.reshape(length[0]*length[1], length[2]).T
+
+    if name == '19':  # 就因为OD28K的最后多了几个点
+        y = grid_dict['LI Demod 1 X (A)'].swapaxes(0, 2)[1:]
+        y = y.swapaxes(0, 2)
+        length = y.shape
+        bias = grid_dict['Bias (V)'][0, 0][1:]
+        y = y.reshape(length[0]*length[1], length[2]).T
+    return length, bias, y
+
+
+# mrange_change is for smoothing out the measure range change
+# python取list左闭右开
+mrange_changes = {'04': [21, 23], '08': [11, 13], '11': [16, 18], '13': [10, 12]}
+
+
 # 需要重新整理一下抹平换量程的函数
-# def fit_mrc(tck, name):
-#     if name <= '13':
-#         def f(x): return interpolate.splev(x, tck)
-#         x = np.concatenate((bias_ie[:mrange_change[name][0]],
-#                             bias_ie[mrange_change[name][1]:]))
-#         tck_new = interpolate.splrep(x, f(x))
-#         return tck_new
-#     else: return tck
+# 思路直接drop掉附近的点呢？反正本身也要插值
+def mrange_change(name, bias, y, length):
+    if name <= '13':
+        y = np.concatenate((y[:mrange_changes[name][0]], y[mrange_changes[name][1]:]))
+        bias = np.concatenate((bias[:mrange_changes[name][0]], bias[mrange_changes[name][1]:]))
+        length[2] = y.shape[0]
+    return length, bias, y

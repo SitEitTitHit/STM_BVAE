@@ -246,8 +246,3 @@ def give_mapping_lims(a, mapping_type):
 
 
 
-k = 3
-a = [3, 7, 1, 9, 5]
-
-indices =
-print(indices)  # 输出：[0, 2, 4]

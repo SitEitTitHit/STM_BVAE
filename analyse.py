@@ -13,6 +13,7 @@ import math  # math.cell used
 import random
 import heapq  # sorting
 from scipy.signal import correlate2d
+from scipy import misc, interpolate
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import AxesWidget, Slider, Button, RadioButtons, CheckButtons
@@ -30,7 +31,7 @@ def str2bool(v):
 
 
 model_index_default = 0
-save_index_default = 2
+save_index_default = 7
 beta_default = 1e-3
 grid_set = '9_doping'
 grid_set_path = 'grids/04_08_11_13_16_18_19_22_23/'
@@ -38,9 +39,9 @@ dpk_default = 'interp_GF05_1'
 no_label_model_list = [0]
 
 flag_all = 0
-flag_LS_retrieve = 1
+flag_LS_retrieve = 0
 flag_LS_filter = 0
-flag_LS_profile = 0
+flag_LS_profile = 1
 
 flag_LS_distribution = 0
 flag_plot_ae_outputs = 0
@@ -839,7 +840,6 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
     p1 = np.zeros(dim)
     # 记录当前选中的两个index(排序之前，0不是最大！)
     x_idx = std_index[0]; y_idx = std_index[1]
-    parases_rtv = []
     rtv_colors = [cm.get_cmap(cmp_key)(i/(wtf_count-1)) for i in range(wtf_count)]  # 提前算好这些xxx点的颜色
 
     def plot_correlation():
@@ -880,7 +880,7 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
         if len(parases_rtv) != 0:
             ax.scatter(parases_rtv[x_idx], parases_rtv[y_idx], marker='x', c=rtv_colors, zorder=100)
 
-    def plot_wtf():
+    def plot_wtf(clr='cl1', d2f_mark=False):
         # 画waterfall plot
         ax = axes[2]
         ax.clear()
@@ -888,35 +888,70 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
         parases = [np.linspace(p0[i], p1[i], wtf_count, endpoint=True) for i in range(dim)]
         parases = np.array(parases).T
         for i, paras in enumerate(parases):
-            curve = decode(paras)+(i/wtf_count*wtf_offset)*0.1
-            # ax.plot(data.bias, curve, c=cm.get_cmap(cmp_key)(i/(wtf_count-1)), alpha=0.7)
-            ax.plot(data.bias, curve, c='black', alpha=0.7)
+            offset = (i/wtf_count*wtf_offset)*0.1
+            curve = decode(paras)+offset
+            if clr=='cl1':
+                ax.plot(data.bias, curve, c='black', alpha=0.7)
+            else:
+                ax.plot(data.bias, curve, c=cm.get_cmap(cmp_key)(i/(wtf_count-1)), alpha=0.7)
 
-    def rtv_wtf():
+            # 先不打包成函数了先塞在这里
+            if d2f_mark:
+                tck = interpolate.splrep(data.bias, curve)
+                def f(x): return interpolate.splev(x, tck)
+                d2f = np.zeros(len(data.bias))
+                for j, x in enumerate(data.bias):
+                    d2f[j] = - misc.derivative(f, x, dx=5e-3, n=2)
+                # 不能直接全域取最大，还是得稍微处理一下最初最末的点
+                d2f_range = 5
+                middle = int(len(data.bias)/2)
+                arg_l = np.argmax(d2f[d2f_range:middle])
+                arg_r = np.argmax(d2f[middle:-d2f_range])+middle
+                ax.scatter(data.bias[arg_l], f(data.bias[arg_l]), c='b', s=5)
+                ax.scatter(data.bias[arg_r], f(data.bias[arg_r]), c='b', s=5)
+
+
+    # 暂存indices和parases_rtv，再多写一个flag_recal节省运算
+    indices, parases_rtv = [], []
+    def rtv_wtf(flag_recal=True, clr='cl1'):
         ax = axes[3]
         ax.clear()
         # paras的list，先用linespace列出来，再转置一下，为了代码简练
         parases = [np.linspace(p0[i], p1[i], wtf_count, endpoint=True) for i in range(dim)]
         parases = np.array(parases).T
-        nonlocal parases_rtv
-        parases_rtv = []
+        nonlocal indices, parases_rtv
+
+        if flag_recal:
+            indices, parases_rtv = [], []
         for i, paras in enumerate(parases):
             # index = data_index_retrieve(paras)
             # curve_raw = data[index][0]+(i/wtf_count*wtf_offset)*0.1
             # parases_rtv.append(enc_mu.iloc[index])
 
             # 上面是之前一条线的版本，现在改成五/十条线一下
-            indices = data_index_retrieve(paras, rtv_num=5)
-            curve_raw = [data[index][0] for index in indices]
+            # indices(dim, rtv_num)是原始线的序号，再以dim维度堆叠
+            if flag_recal:
+                indices.append(data_index_retrieve(paras, rtv_num=5))
+
+                paras_rtv = [enc_mu.iloc[index] for index in indices[i]]
+                paras_rtv = np.mean(paras_rtv, axis=0)
+                parases_rtv.append(paras_rtv)
+
+            curve_raw = [data[index][0] for index in indices[i]]
             curve_raw = np.mean(curve_raw, axis=0)
             curve_raw = curve_raw+(i/wtf_count*wtf_offset)*0.1
 
-            paras_rtv = [enc_mu.iloc[index] for index in indices]
-            paras_rtv = np.mean(paras_rtv, axis=0)
-            parases_rtv.append(paras_rtv)
+            # 取出是第几个grid的
+            labels = [data[index][1] for index in indices[i]]
 
-            ax.plot(data.bias, curve_raw, c=cm.get_cmap(cmp_key)(i/(wtf_count-1)), alpha=0.7)
-        parases_rtv = np.array(parases_rtv).T
+            if clr=='cl1':
+                ax.plot(data.bias, curve_raw, c='black', alpha=0.7)
+                ax.text(0.08, curve_raw[-5], str(labels), fontsize=5)
+            else:
+                ax.plot(data.bias, curve_raw, c=cm.get_cmap(cmp_key)(i/(wtf_count-1)), alpha=0.7)
+
+        if flag_recal:
+            parases_rtv = np.array(parases_rtv).T
         # 调用plot_cutline把这些点map回去
         plot_cutline()
 
@@ -938,7 +973,11 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
     sax_x1 =fig.add_axes([0.046, 0.04, 0.233, 0.02])
     sax_y0 =fig.add_axes([0.293, 0.15, 0.006, 0.70])
     sax_y1 =fig.add_axes([0.306, 0.15, 0.006, 0.70])
+
+    bax_cl0=fig.add_axes([0.333, 0.05, 0.020, 0.03])
+    bax_cl1=fig.add_axes([0.353, 0.05, 0.020, 0.03])
     bax_rtv=fig.add_axes([0.666, 0.05, 0.020, 0.03])
+    bax_contour = fig.add_axes([0.666, 0.92, 0.020, 0.03])
     bax_s = fig.add_axes([0.006, 0.90, 0.013, 0.06])
     bax_l = fig.add_axes([0.020, 0.90, 0.012, 0.06])
 
@@ -998,17 +1037,55 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
     def button_rtv_update(event): rtv_wtf()
     button_rtv.on_clicked(button_rtv_update)
 
+    def ax_adjust(ax, i):
+        ax.title.set_size(8)
+        ax.set_xlabel('0.'+grid_legends[i], labelpad=0.05)
+        ax.xaxis.set_label_position('top')
+        plt.setp(ax.get_xticklabels(), visible=False)
+        plt.setp(ax.get_yticklabels(), visible=False)
+        ax.tick_params(axis='both', which='both', length=0)
+        ax.invert_yaxis()
+
+    button_ctr = Button(bax_contour, 'ctr')
+    def button_ctr_update(event):
+
+        # 计算得到(gridsize^2, dim)和(dim)的内积
+        def value(i):
+            return np.dot(enc_mu.loc[i], p1-p0)
+
+        # 先在这里写3*3
+        n_rows = 3
+        n_cols = math.ceil(data.grid_num/n_rows)
+        fig1 = plt.figure(figsize=(3*n_cols, 3*n_rows))
+        for i in range(data.grid_num):
+            ax = plt.subplot(n_rows, n_cols, i+1)  # 注意要+1
+            topo = np.array(value(i)).reshape((grid_size[i], -1))  # 取grid i的第j个参数
+            vmin, vmax = give_mapping_lims(topo, 'r')
+            ax.imshow(topo, vmin=vmin, vmax=vmax)
+            ax_adjust(ax, i)
+        fig1.subplots_adjust(left=0.04, right=0.96, bottom=0.04, top=0.96, hspace=0.05, wspace=0.05)
+        plt.show()
+    button_ctr.on_clicked(button_ctr_update)
+
     button_s = Button(bax_s, 'sv')
-    def button_s_update(event): print([list(p0), list(p1)])
+    def button_s_update(event):
+        print('before sorted', [list(p0), list(p1)])
+        # 应该有更直接的函数
+        sorted_p0 = [p0[std_index[i]] for i in range(dim)]
+        sorted_p1 = [p1[std_index[i]] for i in range(dim)]
+        print([sorted_p0, sorted_p1])
+        # 现在输出的是排序过后的版本了
     button_s.on_clicked(button_s_update)
 
     button_l = Button(bax_l, 'ld')
     def button_l_update(event):
         string_p = input('input p0 & p1: ')
         string_p = list(filter(None, re.split(',|\s|\[|\]', string_p)))
-        p0_temp = np.array([float(string_p[i]) for i in range(dim)])
-        p1_temp = np.array([float(string_p[i+dim]) for i in range(dim)])
-        print([list(p0_temp), list(p1_temp)])
+        p0_temp, p1_temp = np.zeros(dim), np.zeros(dim)
+        for i in range(dim):
+            p0_temp[std_index[i]] = float(string_p[i])
+            p1_temp[std_index[i]] = float(string_p[i+dim])
+        print('reverse sorted', [list(p0_temp), list(p1_temp)])
         if len(p0_temp)==dim and len(p1_temp)==dim:
             nonlocal p0, p1
             p0 = p0_temp; p1 = p1_temp
@@ -1026,6 +1103,18 @@ def LSProfile(dim_clipped=8, para_lim=3, wtf_count=50, wtf_offset=80):
         else:
             print('input failed!')
     button_l.on_clicked(button_l_update)
+
+    button_cl0 = Button(bax_cl0, 'cl0')
+    def button_cl0_update(event):
+        plot_wtf(clr='cl0')
+        rtv_wtf(flag_recal=False, clr='cl0')
+    button_cl0.on_clicked(button_cl0_update)
+
+    button_cl1 = Button(bax_cl1, 'cl1')
+    def button_cl1_update(event):
+        plot_wtf(clr='cl1')
+        rtv_wtf(flag_recal=False, clr='cl1')
+    button_cl1.on_clicked(button_cl1_update)
 
     # ！！！如果有button plt.show()一定要紧跟在后面，我也不知道为啥
     plt.show()

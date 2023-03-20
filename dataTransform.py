@@ -27,24 +27,17 @@ class GridProcess:
             grid_dict['LI Demod 1 X (A)'] = np.load(grid_path[:-4]+'.twisted_GF0.5.npz')['GFed_dIdV']
 
         # length: a tuple () of grid_width, grid_height, & curve.
-        self.length = grid_dict['LI Demod 1 X (A)'].shape
+        # (0305)目前这个写法有一丢丢浪费资源但是问题不大
+        self.length = list(grid_dict['LI Demod 1 X (A)'].shape)
         self.bias = grid_dict['Bias (V)'][0, 0]
         self.y = grid_dict['LI Demod 1 X (A)'].reshape(self.length[0] * self.length[1], self.length[2]).T
 
-        # processing specific grids
-        if self.name == '16' or self.name == 'OP32K':  # 就因为OP32K的最后多了几个点
-            self.y = grid_dict['LI Demod 1 X (A)'].swapaxes(0, 2)[:-5]
-            self.y = self.y.swapaxes(0, 2)
-            self.length = self.y.shape
-            self.bias = grid_dict['Bias (V)'][0, 0][:-5]
-            self.y = self.y.reshape(self.length[0] * self.length[1], self.length[2]).T
+        # processing extra points for specific grids
+        self.length, self.bias, self.y = DTF.detele_extra_points(self.name, grid_dict, self.bias, self.y, self.length)
 
-        if self.name == '19':  # 就因为OD28K的最后多了几个点
-            self.y = grid_dict['LI Demod 1 X (A)'].swapaxes(0, 2)[1:]
-            self.y = self.y.swapaxes(0, 2)
-            self.length = self.y.shape
-            self.bias = grid_dict['Bias (V)'][0, 0][1:]
-            self.y = self.y.reshape(self.length[0] * self.length[1], self.length[2]).T
+        # processing the measure range change
+        # 这里这个顺序还是挺tricky的不能乱改，之后看看把他们两个做的对称一点？
+        self.length, self.bias, self.y = DTF.mrange_change(self.name, self.bias, self.y, self.length)
 
         # get standard deviation & mean curve
         # (0105)标准差并不是一个好做法，剥离出normalization后续单独定义吧
@@ -62,6 +55,10 @@ class GridProcess:
             self.offset = 0
 
         print('offset = {:.8f}'.format(self.offset))
+
+        # 临时看一下修mrange的效果
+        plt.plot(DTF.bias_interp, f_mean_temp(DTF.bias_interp))
+        plt.show()
 
         self.y = self.y.T
 
@@ -110,7 +107,7 @@ class GridProcess:
             if self.load_modifier == 'GF0.5':
                 # np.savez(self.grid_path[:-4] + '.interp_GF05.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
                 #          mean_curve=mean_curve_interp / norm, std=norm, offset=self.offset)
-                np.savez(self.grid_path[:-4] + '.interp_GF05_1.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
+                np.savez(self.grid_path[:-4] + '.interp_GF05_2.npz', bias=DTF.bias_interp, dIdV=dIdV_itp / norm,
                          mean_curve=mean_curve_interp / norm, std=norm, offset=self.offset)
 
         if map_gap:
@@ -208,11 +205,14 @@ def mean_curve_plot():
 
 
 # 这一段是批量处理grid的
-for i in range(len(Flist)):
-    if Flist_split[i][1] == '3ds':
-        Grid = GridProcess(DTF.grid_set_path + Flist[i], load_modifier='GF0.5')
-        Grid.interp(save_itp=True)
-        # Grid.all_plot4()
+# for i in range(len(Flist)):
+#     if Flist_split[i][1] == '3ds':
+#         Grid = GridProcess(DTF.grid_set_path + Flist[i], load_modifier='GF0.5')
+#         Grid.interp(save_itp=True)
+#         # Grid.all_plot4()
+
+
+Grid = GridProcess(DTF.grid_set_path + '23.3ds', load_modifier='GF0.5')
 
 
 # 这一段是使用gaussianFilter

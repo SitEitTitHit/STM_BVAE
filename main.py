@@ -3,10 +3,10 @@ import subprocess
 
 # Use list instead of tuple
 model_index = [0]
-save_index = [[3]]
-beta = [[1e-3]]
+save_index = [[6, 7, 8]]
+beta = [[1e-3, 1e-3, 1e-3]]
 patience = 5
-dpk = 'interp_GF05_1'
+dpk = 'interp_GF05_2'
 
 flag_train = 1
 flag_plot = 1
